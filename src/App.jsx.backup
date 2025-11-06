@@ -1,0 +1,613 @@
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Sparkles, Heart, Star, Brain, Calculator, Telescope } from 'lucide-react';
+import { Button } from '@/components/ui/button.jsx';
+import './App.css';
+import { mbtiQuestions, calculateMBTI, calculateLifePathNumber, calculatePersonalYear, getSunSign } from './lib/diagnosis';
+import { mbtiTypes, numerologyData, zodiacData } from './lib/data';
+
+function App() {
+  const [step, setStep] = useState('home'); // home, input, questions, result
+  const [userInfo, setUserInfo] = useState({
+    name: '',
+    year: '',
+    month: '',
+    day: ''
+  });
+  const [answers, setAnswers] = useState({});
+  const [currentQuestion, setCurrentQuestion] = useState(0);
+  const [result, setResult] = useState(null);
+
+  const handleStartDiagnosis = () => {
+    setStep('input');
+  };
+
+  const handleUserInfoSubmit = (e) => {
+    e.preventDefault();
+    if (userInfo.name && userInfo.year && userInfo.month && userInfo.day) {
+      setStep('questions');
+    }
+  };
+
+  const handleAnswerSelect = (questionId, value) => {
+    setAnswers({ ...answers, [questionId]: value });
+    
+    if (currentQuestion < mbtiQuestions.length - 1) {
+      setTimeout(() => {
+        setCurrentQuestion(currentQuestion + 1);
+      }, 300);
+    } else {
+      // 診断完了
+      calculateResult();
+    }
+  };
+
+  const calculateResult = () => {
+    // MBTI計算
+    const mbtiAnswers = Object.entries(answers).map(([questionId, value]) => ({
+      questionId: parseInt(questionId),
+      value
+    }));
+    const mbtiResult = calculateMBTI(mbtiAnswers);
+    
+    // 数秘術計算
+    const lifePathNumber = calculateLifePathNumber(
+      parseInt(userInfo.year),
+      parseInt(userInfo.month),
+      parseInt(userInfo.day)
+    );
+    const personalYear = calculatePersonalYear(
+      parseInt(userInfo.month),
+      parseInt(userInfo.day),
+      new Date().getFullYear()
+    );
+    
+    // 西洋占星術計算
+    const sunSign = getSunSign(parseInt(userInfo.month), parseInt(userInfo.day));
+    
+    setResult({
+      user: userInfo,
+      mbti: {
+        ...mbtiResult,
+        details: mbtiTypes[mbtiResult.type]
+      },
+      numerology: {
+        lifePathNumber,
+        personalYear,
+        details: numerologyData[lifePathNumber]
+      },
+      astrology: {
+        sunSign,
+        details: zodiacData[sunSign]
+      }
+    });
+    
+    setStep('result');
+  };
+
+  const handlePrevQuestion = () => {
+    if (currentQuestion > 0) {
+      setCurrentQuestion(currentQuestion - 1);
+    }
+  };
+
+  const handleRestart = () => {
+    setStep('home');
+    setUserInfo({ name: '', year: '', month: '', day: '' });
+    setAnswers({});
+    setCurrentQuestion(0);
+    setResult(null);
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
+      <AnimatePresence mode="wait">
+        {step === 'home' && <HomePage key="home" onStart={handleStartDiagnosis} />}
+        {step === 'input' && (
+          <InputPage
+            key="input"
+            userInfo={userInfo}
+            setUserInfo={setUserInfo}
+            onSubmit={handleUserInfoSubmit}
+            onBack={() => setStep('home')}
+          />
+        )}
+        {step === 'questions' && (
+          <QuestionsPage
+            key="questions"
+            currentQuestion={currentQuestion}
+            answers={answers}
+            onAnswer={handleAnswerSelect}
+            onPrev={handlePrevQuestion}
+          />
+        )}
+        {step === 'result' && result && (
+          <ResultPage key="result" result={result} onRestart={handleRestart} />
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function HomePage({ onStart }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="min-h-screen flex flex-col items-center justify-center p-6"
+    >
+      <motion.div
+        initial={{ y: -50, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.2 }}
+        className="text-center mb-12"
+      >
+        <div className="flex items-center justify-center mb-6">
+          <Sparkles className="w-12 h-12 text-purple-600 mr-3" />
+          <h1 className="text-5xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+            Life Compass
+          </h1>
+        </div>
+        <p className="text-2xl text-gray-700 mb-4">
+          3つの視点で、本当のあなたを発見する
+        </p>
+        <p className="text-lg text-gray-600">
+          MBTI・数秘術・西洋占星術が導く、あなただけの人生の羅針盤
+        </p>
+      </motion.div>
+
+      <motion.div
+        initial={{ y: 50, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.4 }}
+        className="grid md:grid-cols-3 gap-6 mb-12 max-w-4xl"
+      >
+        <div className="bg-white/80 backdrop-blur-sm p-6 rounded-2xl shadow-lg border border-purple-100">
+          <Brain className="w-12 h-12 text-blue-600 mb-4" />
+          <h3 className="text-xl font-bold mb-2 text-gray-800">MBTI</h3>
+          <p className="text-gray-600">心の傾向を知る</p>
+          <p className="text-sm text-gray-500 mt-2">
+            16タイプの性格診断で、あなたの思考パターンと行動傾向を明らかにします
+          </p>
+        </div>
+
+        <div className="bg-white/80 backdrop-blur-sm p-6 rounded-2xl shadow-lg border border-purple-100">
+          <Calculator className="w-12 h-12 text-amber-600 mb-4" />
+          <h3 className="text-xl font-bold mb-2 text-gray-800">数秘術</h3>
+          <p className="text-gray-600">人生の目的を知る</p>
+          <p className="text-sm text-gray-500 mt-2">
+            生年月日から導き出される数字で、あなたの人生の使命を解き明かします
+          </p>
+        </div>
+
+        <div className="bg-white/80 backdrop-blur-sm p-6 rounded-2xl shadow-lg border border-purple-100">
+          <Telescope className="w-12 h-12 text-purple-600 mb-4" />
+          <h3 className="text-xl font-bold mb-2 text-gray-800">西洋占星術</h3>
+          <p className="text-gray-600">運命の流れを知る</p>
+          <p className="text-sm text-gray-500 mt-2">
+            星座の配置から、あなたの性格と人生の方向性を読み解きます
+          </p>
+        </div>
+      </motion.div>
+
+      <motion.div
+        initial={{ scale: 0.8, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ delay: 0.6 }}
+      >
+        <Button
+          onClick={onStart}
+          size="lg"
+          className="text-lg px-12 py-6 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-full shadow-xl"
+        >
+          <Sparkles className="w-5 h-5 mr-2" />
+          無料で診断を始める
+        </Button>
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.8 }}
+        className="mt-12 text-center text-sm text-gray-500"
+      >
+        <p>所要時間: 約5分 | 完全無料 | 詳細なレポート付き</p>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+function InputPage({ userInfo, setUserInfo, onSubmit, onBack }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: 100 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -100 }}
+      className="min-h-screen flex items-center justify-center p-6"
+    >
+      <div className="bg-white/90 backdrop-blur-sm p-8 rounded-3xl shadow-2xl max-w-md w-full border border-purple-100">
+        <h2 className="text-3xl font-bold mb-6 text-center bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+          基本情報を入力
+        </h2>
+        
+        <form onSubmit={onSubmit} className="space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              お名前（ニックネーム可）
+            </label>
+            <input
+              type="text"
+              value={userInfo.name}
+              onChange={(e) => setUserInfo({ ...userInfo, name: e.target.value })}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              placeholder="例: 太郎"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              生年月日
+            </label>
+            <div className="grid grid-cols-3 gap-3">
+              <input
+                type="number"
+                value={userInfo.year}
+                onChange={(e) => setUserInfo({ ...userInfo, year: e.target.value })}
+                className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                placeholder="年"
+                min="1900"
+                max="2025"
+                required
+              />
+              <input
+                type="number"
+                value={userInfo.month}
+                onChange={(e) => setUserInfo({ ...userInfo, month: e.target.value })}
+                className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                placeholder="月"
+                min="1"
+                max="12"
+                required
+              />
+              <input
+                type="number"
+                value={userInfo.day}
+                onChange={(e) => setUserInfo({ ...userInfo, day: e.target.value })}
+                className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                placeholder="日"
+                min="1"
+                max="31"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-4">
+            <Button
+              type="button"
+              onClick={onBack}
+              variant="outline"
+              className="flex-1"
+            >
+              戻る
+            </Button>
+            <Button
+              type="submit"
+              className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+            >
+              次へ
+            </Button>
+          </div>
+        </form>
+      </div>
+    </motion.div>
+  );
+}
+
+function QuestionsPage({ currentQuestion, answers, onAnswer, onPrev }) {
+  const question = mbtiQuestions[currentQuestion];
+  const progress = ((currentQuestion + 1) / mbtiQuestions.length) * 100;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="min-h-screen flex flex-col items-center justify-center p-6"
+    >
+      <div className="w-full max-w-2xl">
+        <div className="mb-8">
+          <div className="flex justify-between text-sm text-gray-600 mb-2">
+            <span>質問 {currentQuestion + 1} / {mbtiQuestions.length}</span>
+            <span>{Math.round(progress)}%</span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <motion.div
+              className="bg-gradient-to-r from-purple-600 to-pink-600 h-2 rounded-full"
+              initial={{ width: 0 }}
+              animate={{ width: `${progress}%` }}
+              transition={{ duration: 0.3 }}
+            />
+          </div>
+        </div>
+
+        <motion.div
+          key={question.id}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -20 }}
+          className="bg-white/90 backdrop-blur-sm p-8 rounded-3xl shadow-2xl border border-purple-100"
+        >
+          <h3 className="text-2xl font-bold mb-8 text-gray-800 text-center">
+            {question.text}
+          </h3>
+
+          <div className="space-y-3">
+            {question.options.map((option) => (
+              <motion.button
+                key={option.value}
+                onClick={() => onAnswer(question.id, option.value)}
+                className={`w-full p-4 text-left rounded-xl border-2 transition-all ${
+                  answers[question.id] === option.value
+                    ? 'border-purple-600 bg-purple-50'
+                    : 'border-gray-200 hover:border-purple-300 bg-white'
+                }`}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <span className="text-gray-800">{option.text}</span>
+              </motion.button>
+            ))}
+          </div>
+
+          {currentQuestion > 0 && (
+            <div className="mt-6 flex justify-center">
+              <Button
+                onClick={onPrev}
+                variant="outline"
+                size="sm"
+              >
+                前の質問に戻る
+              </Button>
+            </div>
+          )}
+        </motion.div>
+      </div>
+    </motion.div>
+  );
+}
+
+function ResultPage({ result, onRestart }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="min-h-screen p-6 pb-20"
+    >
+      <div className="max-w-4xl mx-auto">
+        <motion.div
+          initial={{ y: -50, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="text-center mb-12 pt-8"
+        >
+          <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+            {result.user.name}さんの診断結果
+          </h1>
+          <p className="text-gray-600">3つの視点から見た、あなたの本質</p>
+        </motion.div>
+
+        {/* サマリーカード */}
+        <motion.div
+          initial={{ y: 50, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          className="grid md:grid-cols-3 gap-6 mb-12"
+        >
+          <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-6 rounded-2xl shadow-xl text-white">
+            <Brain className="w-10 h-10 mb-3" />
+            <h3 className="text-sm font-medium mb-1 opacity-90">MBTI</h3>
+            <p className="text-3xl font-bold mb-2">{result.mbti.type}</p>
+            <p className="text-sm opacity-90">{result.mbti.details.name}</p>
+          </div>
+
+          <div className="bg-gradient-to-br from-amber-500 to-amber-600 p-6 rounded-2xl shadow-xl text-white">
+            <Calculator className="w-10 h-10 mb-3" />
+            <h3 className="text-sm font-medium mb-1 opacity-90">数秘術</h3>
+            <p className="text-3xl font-bold mb-2">{result.numerology.lifePathNumber}</p>
+            <p className="text-sm opacity-90">{result.numerology.details.name}</p>
+          </div>
+
+          <div className="bg-gradient-to-br from-purple-500 to-purple-600 p-6 rounded-2xl shadow-xl text-white">
+            <Telescope className="w-10 h-10 mb-3" />
+            <h3 className="text-sm font-medium mb-1 opacity-90">西洋占星術</h3>
+            <p className="text-3xl font-bold mb-2">{result.astrology.details.symbol}</p>
+            <p className="text-sm opacity-90">{result.astrology.sunSign}</p>
+          </div>
+        </motion.div>
+
+        {/* MBTI詳細 */}
+        <motion.div
+          initial={{ y: 50, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.3 }}
+          className="bg-white/90 backdrop-blur-sm p-8 rounded-3xl shadow-xl mb-8 border border-blue-100"
+        >
+          <div className="flex items-center mb-6">
+            <Brain className="w-8 h-8 text-blue-600 mr-3" />
+            <h2 className="text-2xl font-bold text-gray-800">MBTI診断結果</h2>
+          </div>
+          
+          <div className="mb-6">
+            <h3 className="text-xl font-bold text-gray-800 mb-2">
+              {result.mbti.type} - {result.mbti.details.name}
+            </h3>
+            <p className="text-gray-600 mb-4">{result.mbti.details.description}</p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-6 mb-6">
+            <div>
+              <h4 className="font-bold text-gray-800 mb-2 flex items-center">
+                <Star className="w-5 h-5 text-yellow-500 mr-2" />
+                強み
+              </h4>
+              <ul className="space-y-1">
+                {result.mbti.details.strengths.map((strength, i) => (
+                  <li key={i} className="text-gray-600 text-sm">• {strength}</li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-bold text-gray-800 mb-2">成長ポイント</h4>
+              <ul className="space-y-1">
+                {result.mbti.details.weaknesses.map((weakness, i) => (
+                  <li key={i} className="text-gray-600 text-sm">• {weakness}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          <div className="mb-4">
+            <h4 className="font-bold text-gray-800 mb-2">適職</h4>
+            <p className="text-gray-600 text-sm">{result.mbti.details.careers.join('、')}</p>
+          </div>
+
+          <div className="bg-blue-50 p-4 rounded-xl">
+            <h4 className="font-bold text-gray-800 mb-2">成長のアドバイス</h4>
+            <p className="text-gray-600 text-sm">{result.mbti.details.growth}</p>
+          </div>
+        </motion.div>
+
+        {/* 数秘術詳細 */}
+        <motion.div
+          initial={{ y: 50, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.4 }}
+          className="bg-white/90 backdrop-blur-sm p-8 rounded-3xl shadow-xl mb-8 border border-amber-100"
+        >
+          <div className="flex items-center mb-6">
+            <Calculator className="w-8 h-8 text-amber-600 mr-3" />
+            <h2 className="text-2xl font-bold text-gray-800">数秘術診断結果</h2>
+          </div>
+          
+          <div className="mb-6">
+            <h3 className="text-xl font-bold text-gray-800 mb-2">
+              ライフパスナンバー {result.numerology.lifePathNumber} - {result.numerology.details.name}
+            </h3>
+            <p className="text-gray-600 mb-4">{result.numerology.details.description}</p>
+          </div>
+
+          <div className="mb-4">
+            <h4 className="font-bold text-gray-800 mb-2">人生の目的</h4>
+            <p className="text-gray-600 text-sm">{result.numerology.details.lifePurpose}</p>
+          </div>
+
+          <div className="mb-4">
+            <h4 className="font-bold text-gray-800 mb-2">キーワード</h4>
+            <div className="flex flex-wrap gap-2">
+              {result.numerology.details.keywords.map((keyword, i) => (
+                <span key={i} className="px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-sm">
+                  {keyword}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-amber-50 p-4 rounded-xl">
+            <h4 className="font-bold text-gray-800 mb-2">今年のパーソナルイヤー</h4>
+            <p className="text-gray-600 text-sm">
+              あなたの今年のパーソナルイヤーは <span className="font-bold text-amber-600">{result.numerology.personalYear}</span> です。
+            </p>
+          </div>
+        </motion.div>
+
+        {/* 西洋占星術詳細 */}
+        <motion.div
+          initial={{ y: 50, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.5 }}
+          className="bg-white/90 backdrop-blur-sm p-8 rounded-3xl shadow-xl mb-8 border border-purple-100"
+        >
+          <div className="flex items-center mb-6">
+            <Telescope className="w-8 h-8 text-purple-600 mr-3" />
+            <h2 className="text-2xl font-bold text-gray-800">西洋占星術診断結果</h2>
+          </div>
+          
+          <div className="mb-6">
+            <h3 className="text-xl font-bold text-gray-800 mb-2">
+              太陽星座: {result.astrology.sunSign} {result.astrology.details.symbol}
+            </h3>
+            <p className="text-gray-600 mb-4">{result.astrology.details.description}</p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-4 mb-4">
+            <div className="bg-purple-50 p-4 rounded-xl">
+              <h4 className="font-bold text-gray-800 mb-2">エレメント</h4>
+              <p className="text-gray-600 text-sm">{result.astrology.details.element}</p>
+            </div>
+            <div className="bg-purple-50 p-4 rounded-xl">
+              <h4 className="font-bold text-gray-800 mb-2">支配星</h4>
+              <p className="text-gray-600 text-sm">{result.astrology.details.ruler}</p>
+            </div>
+          </div>
+
+          <div className="mb-4">
+            <h4 className="font-bold text-gray-800 mb-2">キーワード</h4>
+            <div className="flex flex-wrap gap-2">
+              {result.astrology.details.keywords.map((keyword, i) => (
+                <span key={i} className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm">
+                  {keyword}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-purple-50 p-4 rounded-xl">
+            <h4 className="font-bold text-gray-800 mb-2">相性の良い星座</h4>
+            <p className="text-gray-600 text-sm">{result.astrology.details.compatibility.join('、')}</p>
+          </div>
+        </motion.div>
+
+        {/* 総合メッセージ */}
+        <motion.div
+          initial={{ y: 50, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.6 }}
+          className="bg-gradient-to-br from-purple-600 to-pink-600 p-8 rounded-3xl shadow-xl mb-8 text-white"
+        >
+          <div className="flex items-center mb-6">
+            <Heart className="w-8 h-8 mr-3" />
+            <h2 className="text-2xl font-bold">総合メッセージ</h2>
+          </div>
+          
+          <p className="text-lg leading-relaxed">
+            {result.user.name}さんは、{result.mbti.type}タイプの{result.mbti.details.name}として、
+            {result.numerology.details.name}の数秘を持ち、{result.astrology.sunSign}の情熱を秘めています。
+            あなたの強みは、{result.mbti.details.strengths[0]}と{result.numerology.details.strengths[0]}です。
+            {result.numerology.details.lifePurpose}これがあなたの人生の目的です。
+            {result.mbti.details.growth}
+          </p>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.7 }}
+          className="text-center"
+        >
+          <Button
+            onClick={onRestart}
+            size="lg"
+            className="px-12 py-6 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-full shadow-xl"
+          >
+            もう一度診断する
+          </Button>
+        </motion.div>
+      </div>
+    </motion.div>
+  );
+}
+
+export default App;
